@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Part 3A — Image Warping & Mosaicing (by antoine)</title>
+  <style>
+    :root{
+      --bg: #0b0c0e;
+      --paper: #111317;
+      --text: #e9eef3;
+      --muted: #aab7c5;
+      --brand: #86b7ff;
+      --card: #12161c;
+      --ring: rgba(134,183,255,.35);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --maxw: 1200px;
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f7f9fb; --paper:#ffffff; --text:#0f1720; --muted:#4b5563; --card:#ffffff; --shadow:0 8px 24px rgba(0,0,0,.08); }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"}
+    a{color:var(--brand);text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    .wrap{max-width:var(--maxw);margin:auto;padding:28px 20px}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(to bottom, var(--bg), color-mix(in oklab, var(--bg) 80%, transparent));backdrop-filter: blur(8px);border-bottom:1px solid color-mix(in oklab, var(--text) 10%, transparent)}
+    .hero{display:flex;flex-direction:column;gap:10px;padding:18px 0 14px}
+    .title{font-weight:800;letter-spacing:.2px;font-size:clamp(26px, 2.6vw, 40px)}
+    .subtitle{color:var(--muted)}
+
+    nav.toc{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 2px}
+    nav.toc a{padding:8px 12px;border:1px solid color-mix(in oklab,var(--text) 14%,transparent);border-radius:999px;background:color-mix(in oklab,var(--paper) 92%, transparent)}
+    nav.toc a:hover{box-shadow:0 0 0 4px var(--ring)}
+
+    main{padding-top:22px}
+    section{scroll-margin-top:92px;margin:28px 0;padding:22px;border-radius:var(--radius);background:linear-gradient(to bottom right, color-mix(in oklab, var(--card) 96%, transparent), color-mix(in oklab, var(--card) 92%, transparent));box-shadow:var(--shadow);border:1px solid color-mix(in oklab,var(--text) 10%, transparent)}
+    section h2{margin:0 0 10px;font-size:clamp(20px,2.1vw,28px)}
+    .lead{color:var(--muted)}
+
+    .grid{display:grid;gap:18px}
+    .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media (max-width: 900px){ .grid.cols-2, .grid.cols-3{ grid-template-columns:1fr } }
+
+    figure.card{margin:0;border-radius:14px;overflow:hidden;background:var(--paper);border:1px solid color-mix(in oklab,var(--text) 10%, transparent)}
+    .imgwrap{aspect-ratio: 4/3; display:flex;align-items:center;justify-content:center;background:color-mix(in oklab,var(--paper) 70%, transparent)}
+    img.media{width:100%;height:100%;object-fit:cover;display:block}
+    figcaption{padding:10px 12px;color:var(--muted);font-size:14px}
+
+    .note{border-left:4px solid var(--brand);padding:10px 12px;background:color-mix(in oklab,var(--paper) 94%, transparent);border-radius:10px;margin:10px 0}
+    .kbd{font:12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:color-mix(in oklab,var(--text) 3%, transparent);padding:2px 6px;border-radius:6px;border:1px solid color-mix(in oklab,var(--text) 12%, transparent)}
+
+    .matrix{background:var(--paper);border:1px dashed color-mix(in oklab,var(--text) 20%, transparent);padding:12px;border-radius:12px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:13px;overflow:auto}
+
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .row > div{flex:1 1 260px}
+
+    footer{color:var(--muted);padding:30px 0}
+
+    /* Lightbox */
+    .lb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:50}
+    .lb-overlay.active{display:flex}
+    .lb-overlay img{max-width:min(95vw, 1400px);max-height:90vh;border-radius:12px;box-shadow:0 15px 40px rgba(0,0,0,.6)}
+    .lb-close{position:fixed;top:16px;right:20px;color:white;font-size:28px;background:transparent;border:none;cursor:pointer}
+    .lb-caption{position:fixed;bottom:22px;left:0;right:0;color:#eee;text-align:center;padding:8px 18px}
+
+    .small{font-size:14px;color:var(--muted)}
+    .tag{display:inline-block;background:color-mix(in oklab,var(--brand) 20%, transparent);color:color-mix(in oklab,var(--brand) 90%, white);padding:3px 8px;border-radius:999px;font-size:12px;border:1px solid color-mix(in oklab,var(--brand) 60%, transparent)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap hero">
+      <div class="title">Part 3A — Image Warping &amp; Mosaicing <span class="small">(by antoine)</span></div>
+      <p class="subtitle">A compact walkthrough of my pipeline: point correspondences → normalized DLT homographies → inverse warping → feathered blending → rectification and creative overlays.</p>
+      <nav class="toc" aria-label="Sections">
+        <a href="#a1">A.1 Shoot the Pictures</a>
+        <a href="#a2">A.2 Recover Homographies</a>
+        <a href="#a3">A.3 Warp the Images</a>
+        <a href="#a4">A.4 Blend into a Mosaic</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ---------- INTRO ---------- -->
+    <section id="intro">
+      <h2>Introduction</h2>
+      <p class="lead">This page summarizes my implementation of the Part 3A project. I coded a full pipeline in Python (Jupyter): interactive point picking, normalized DLT to estimate homographies, memory-lean inverse warping (nearest &amp; bilinear), and feathered blending. Below I document how I captured data, how I estimated <em>H</em>, and how I handled stitching and overlaying, including small challenges and fixes along the way.</p>
+    </section>
+
+    <!-- ---------- A1 ---------- -->
+    <section id="a1">
+      <h2>A.1 — Shoot the Pictures</h2>
+      <div class="row">
+        <div>
+          <div class="note">
+            <strong>Setup.</strong> I fix the center of projection and rotate the camera to capture overlapping views (≈40–70% overlap). I avoid strong lens distortion, shoot quickly to keep exposure consistent, and prefer static scenes with texture.
+          </div>
+          <ul>
+            <li>Rotate in place (no translation) → projective relationship holds.</li>
+            <li>Overlap ~40–70% ensures enough shared features.</li>
+            <li>Lock exposure/focus when possible to minimize drift.</li>
+            <li>Avoid fisheye; moderate/wide lenses are fine.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="small">Image Sets</h3>
+      <div class="grid cols-2">
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/street_1.jpg" alt="Street set — image 1 (placeholder)"/></div>
+          <figcaption>Set 1 — Streetview (2 pictures). <span class="tag">replace</span> <span class="small">assets/street_1.jpg, assets/street_2.jpg</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/bedroom_1.jpg" alt="Bedroom set — image 1 (placeholder)"/></div>
+          <figcaption>Set 2 — Bedroom (2 pictures). <span class="tag">replace</span> <span class="small">assets/bedroom_1.jpg, assets/bedroom_2.jpg</span></figcaption>
+        </figure>
+      </div>
+      <p class="small">Tip: keep filenames organized by set; I used <span class="kbd">set1_img1.jpg</span>, <span class="kbd">set1_img2.jpg</span>, etc.</p>
+    </section>
+
+    <!-- ---------- A2 ---------- -->
+    <section id="a2">
+      <h2>A.2 — Recover Homographies</h2>
+      <p>I estimate a homography <em>H</em> such that <code>p₂ ≃ H · p₁</code> using clicked correspondences. With <code>n ≥ 4</code> pairs (I recommend 6–10), I solve the normalized-DLT system:</p>
+      <ol>
+        <li><strong>Normalize</strong> each point set (Hartley): translate to centroid and scale so mean distance is √2.</li>
+        <li><strong>Build</strong> the linear system <code>A h = 0</code> from normalized pairs.</li>
+        <li><strong>Solve</strong> via SVD: use the last right-singular vector for <code>h</code>, reshape to <em>H</em><sub>norm</sub>.</li>
+        <li><strong>Denormalize</strong>: <code>H = T₂⁻¹ · H<sub>norm</sub> · T₁</code>, then scale so <code>H[2,2] = 1</code>.</li>
+        <li><strong>Evaluate</strong>: report mean reprojection error and visualize correspondences.</li>
+      </ol>
+
+      <div class="grid cols-2">
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set1_corresp.jpg" alt="Set 1 correspondences (placeholder)"></div>
+          <figcaption>Set 1 — clicked correspondences with lines. <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set2_corresp.jpg" alt="Set 2 correspondences (placeholder)"></div>
+          <figcaption>Set 2 — clicked correspondences with lines. <span class="tag">replace</span></figcaption>
+        </figure>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <div>
+          <h4 class="small">Recovered H (Set 1)</h4>
+          <pre class="matrix">H₁₂ = [
+  h11  h12  h13
+  h21  h22  h23
+  h31  h32  h33
+]
+mean reprojection error ≈ XX.XX px</pre>
+        </div>
+        <div>
+          <h4 class="small">Recovered H (Set 2)</h4>
+          <pre class="matrix">H₁₂ = [
+  h11  h12  h13
+  h21  h22  h23
+  h31  h32  h33
+]
+mean reprojection error ≈ XX.XX px</pre>
+        </div>
+      </div>
+
+      <p class="small">Direction: I keep <code>computeH(im1_pts, im2_pts)</code> as <em>im1 → im2</em> so later I can invert for <em>im2 → im1</em> when building the shared mosaic canvas.</p>
+    </section>
+
+    <!-- ---------- A3 ---------- -->
+    <section id="a3">
+      <h2>A.3 — Warp the Images (Inverse Mapping)</h2>
+      <p>Inverse mapping warps the target pixel grid back into the source via <code>H⁻¹</code>. I implemented a tiled, memory-lean warper (float32 grids) and two samplers (nearest / bilinear). For a creative example, I embedded a Beatles poster into one wall panel by clicking the four inner corners of the panel and warping the poster rectangle onto that quad, then feathered the edges so the poster looks flush with the molding.</p>
+
+      <div class="grid cols-3">
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/poster.jpg" alt="Poster (placeholder)"></div>
+          <figcaption>Overlay: poster to insert. <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/wall.jpg" alt="Wall panel target (placeholder)"></div>
+          <figcaption>Target wall with square panel (click TL→TR→BR→BL). <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/poster_in_panel.jpg" alt="Result composite (placeholder)"></div>
+          <figcaption>Result: poster embedded via <em>H</em> and feathered blend. <span class="tag">replace</span></figcaption>
+        </figure>
+      </div>
+
+      <div class="note">Rectification note: mapping a slanted planar region to a fronto‑parallel rectangle (or vice‑versa) is the same homography operation. For overlays, I use the rectangle as the source and the clicked quad as the destination.</div>
+
+      <details>
+        <summary class="small">What I struggled with here</summary>
+        <ul>
+          <li><strong>Interactive clicks in notebooks:</strong> on the web backend <code>FigureCanvasAgg</code> is non‑interactive. Fix: use a local backend (<code>%matplotlib qt</code>) in Anaconda.</li>
+          <li><strong>Memory errors:</strong> building giant (H×W×3) grids blew RAM. Fix: process the canvas in tiles in my <code>warp_inverse_tiled</code>.</li>
+          <li><strong>Edges showing:</strong> a hard rectangular mask reveals borders. Fix: feathered mask constrained to the warped support; optional exposure match on overlap.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ---------- A4 ---------- -->
+    <section id="a4">
+      <h2>A.4 — Blend the Images into a Mosaic</h2>
+      <p>I blend warped images with <strong>soft alpha masks</strong> created by blurring the binary support and zeroing outside so weights don’t bleed into the background. I also apply a simple per‑channel exposure match on the overlap to reduce seams. Finally I crop the union of valid pixels to remove black wedges.</p>
+
+      <h3 class="small">Set 1</h3>
+      <div class="grid cols-3">
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set1_a.jpg" alt="Set 1 — image A (placeholder)"></div>
+          <figcaption>Source A <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set1_b.jpg" alt="Set 1 — image B (placeholder)"></div>
+          <figcaption>Source B <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set1_mosaic.jpg" alt="Set 1 mosaic (placeholder)"></div>
+          <figcaption>Mosaic (feathered blend) <span class="tag">replace</span></figcaption>
+        </figure>
+      </div>
+
+      <h3 class="small">Set 2</h3>
+      <div class="grid cols-3">
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set2_a.jpg" alt="Set 2 — image A (placeholder)"></div>
+          <figcaption>Source A <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set2_b.jpg" alt="Set 2 — image B (placeholder)"></div>
+          <figcaption>Source B <span class="tag">replace</span></figcaption>
+        </figure>
+        <figure class="card">
+          <div class="imgwrap"><img class="media lb" src="assets/set2_mosaic.jpg" alt="Set 2 mosaic (placeholder)"></div>
+          <figcaption>Mosaic (feathered blend) <span class="tag">replace</span></figcaption>
+        </figure>
+      </div>
+
+      <details>
+        <summary class="small">What I struggled with in mosaics</summary>
+        <ul>
+          <li>Visible rectangle of a warped image → solved by mask zeroing outside support + wide feather (k≈121).</li>
+          <li>Brightness jump across seam → solved by simple per‑channel mean gain on the overlap.</li>
+          <li>Large canvases → mitigated with tiled warping and (when needed) temporary down‑scaling for debug.</li>
+        </ul>
+      </details>
+    </section>
+
+    <footer>
+      <p>© antoine — Part 3A project page. Images will be swapped in later. To view full‑size, click any image.</p>
+    </footer>
+  </main>
+
+  <!-- Lightbox (vanilla JS) -->
+  <div class="lb-overlay" id="lb" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lb-close" aria-label="Close" id="lbClose">×</button>
+    <img id="lbImg" alt="" />
+    <div class="lb-caption" id="lbCap"></div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('lb');
+    const lbImg = document.getElementById('lbImg');
+    const lbCap = document.getElementById('lbCap');
+    const lbClose = document.getElementById('lbClose');
+    document.addEventListener('click', (e)=>{
+      const img = e.target.closest('img.lb, img.media.lb');
+      if(!img) return;
+      lbImg.src = img.getAttribute('data-full') || img.src;
+      const cap = img.closest('figure')?.querySelector('figcaption')?.textContent?.trim() || '';
+      lbCap.textContent = cap;
+      overlay.classList.add('active');
+    });
+    lbClose.addEventListener('click', ()=> overlay.classList.remove('active'));
+    overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.classList.remove('active'); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') overlay.classList.remove('active'); });
+  </script>
+</body>
+</html>
