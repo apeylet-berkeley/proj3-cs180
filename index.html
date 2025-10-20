@@ -17,7 +17,7 @@
     body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system, Segoe UI, Roboto, Helvetica, Arial}
     a{color:var(--brand);text-decoration:none} a:hover{text-decoration:underline}
     .wrap{max-width:var(--maxw);margin:auto;padding:28px 20px}
-    header{position:sticky;top:0;z-index:10;background:linear-gradient(to bottom, var(--bg), color-mix(in oklab, var(--bg) 80%, transparent));backdrop-filter: blur(8px);border-bottom:1px solid color-mix(in oklab, var(--text) 10%, transparent)}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(to bottom, var(--bg), color-mix(in oklab, var(--bg) 80%, transparent));backdrop-filter: blur(8px);border-bottom:1px solid color-mix(in oklab,var(--text) 10%, transparent)}
     .hero{display:flex;flex-direction:column;gap:10px;padding:18px 0 14px}
     .title{font-weight:800;letter-spacing:.2px;font-size:clamp(26px, 2.6vw, 40px)}
     .subtitle{color:var(--muted)}
@@ -51,7 +51,7 @@
     .imgwrap.tall { aspect-ratio: auto; }
     .imgwrap.tall img.media { object-fit: contain; height: auto; }
 
-    /* === Floating scroll note (added) === */
+    /* === Floating scroll note === */
     .scroll-note{
       position: fixed;
       right: 16px;
@@ -71,10 +71,7 @@
       transition: opacity .25s ease, transform .25s ease;
     }
     .scroll-note.hidden{ opacity: 0; transform: translateY(8px); pointer-events: none; }
-    .scroll-note .dot{
-      width: 8px; height: 8px; border-radius: 999px; background: var(--brand);
-      box-shadow: 0 0 0 4px var(--ring);
-    }
+    .scroll-note .dot{ width: 8px; height: 8px; border-radius: 999px; background: var(--brand); box-shadow: 0 0 0 4px var(--ring); }
     .scroll-note button{
       all: unset; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1;
       padding: 0 2px; border-radius: 6px;
@@ -210,7 +207,8 @@
     <!-- ---------- B1 ---------- -->
     <section id="b1">
       <h2>B.1 — Harris Corner Detection &amp; ANMS <span class="tag">Deliverable</span></h2>
-      <p class="lead">Single-scale Harris (no sub-pixel), then Adaptive Non-Maximal Suppression. Below: corners overlaid <em>without</em> ANMS (NMS only) and <em>with</em> ANMS.</p>
+      <p class="lead"><strong>What I did.</strong> I implemented single-scale Harris (Sobel gradients, structure tensor smoothing) and selected peaks via NMS, then applied Adaptive Non-Maximal Suppression (ANMS) to keep well-distributed strong corners. I visualize corners <em>before</em> and <em>after</em> ANMS.</p>
+      <div class="note"><strong>What was tricky.</strong> Picking thresholds that generalize: low threshold → cluttered; high threshold → too few corners. ANMS alleviates this by spreading features even in textured regions.</div>
 
       <h3 class="small">Image A</h3>
       <div class="grid cols-2">
@@ -240,25 +238,27 @@
     <!-- ---------- B2 ---------- -->
     <section id="b2">
       <h2>B.2 — Feature Descriptor Extraction <span class="tag">Deliverable</span></h2>
-      <p class="lead">Axis-aligned 8×8 descriptors sampled from a 40×40 window (blurred), with bias/gain normalization. Below are several sample descriptors (40×40 → blurred → 8×8).</p>
+      <p class="lead"><strong>What I did.</strong> For each keypoint, I extract a 40×40 grayscale patch, apply a light Gaussian blur, then downsample to an 8×8 descriptor and bias/gain-normalize (mean 0, std 1). Rotation invariance is not used as required.</p>
+      <div class="note"><strong>What was tricky.</strong> Sampling too small (e.g., straight to 8×8) made descriptors brittle. The 40×40 → blur → 8×8 pipeline produced much more stable matches.</div>
 
       <div class="grid cols-3">
-        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_0_desc_0000.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #0 (40×40 → 8×8). File: <span class="kbd">A_0_desc_0000.png</span></figcaption></figure>
-        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_1_desc_0031.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #1. File: <span class="kbd">A_1_desc_0001.png</span></figcaption></figure>
-        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_2_desc_0062.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #2. File: <span class="kbd">A_2_desc_0002.png</span></figcaption></figure>
+        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_0_desc_0000.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #0. File: <span class="kbd">A_0_desc_0000.png</span></figcaption></figure>
+        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_1_desc_0031.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #1. File: <span class="kbd">A_1_desc_0031.png</span></figcaption></figure>
+        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_2_desc_0062.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #2. File: <span class="kbd">A_2_desc_0062.png</span></figcaption></figure>
       </div>
 
       <div class="grid cols-3">
         <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/B_0_desc_0000.png" alt="B descriptor sample"></div><figcaption>B — descriptor sample #0. File: <span class="kbd">B_0_desc_0000.png</span></figcaption></figure>
-        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/B_1_desc_0055.png" alt="B descriptor sample"></div><figcaption>B — descriptor sample #1. File: <span class="kbd">B_1_desc_0001.png</span></figcaption></figure>
-        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/B_2_desc_0110.png" alt="B descriptor sample"></div><figcaption>B — descriptor sample #2. File: <span class="kbd">B_2_desc_0002.png</span></figcaption></figure>
+        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/B_1_desc_0055.png" alt="B descriptor sample"></div><figcaption>B — descriptor sample #1. File: <span class="kbd">B_1_desc_0055.png</span></figcaption></figure>
+        <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/B_2_desc_0110.png" alt="B descriptor sample"></div><figcaption>B — descriptor sample #2. File: <span class="kbd">B_2_desc_0110.png</span></figcaption></figure>
       </div>
     </section>
 
     <!-- ---------- B3 ---------- -->
     <section id="b3">
       <h2>B.3 — Feature Matching (Lowe Ratio) <span class="tag">Deliverable</span></h2>
-      <p class="lead">Matches between the two images using nearest / second-nearest distance ratio (Lowe). I also show the RANSAC inliers.</p>
+      <p class="lead"><strong>What I did.</strong> I compute SSD distances between descriptors and apply Lowe’s ratio test (nearest/second-nearest). I visualize all accepted matches and, separately, the RANSAC inliers.</p>
+      <div class="note"><strong>What was tricky.</strong> The ratio threshold is sensitive: I used 0.70–0.75; lower yields cleaner matches but fewer inliers; higher finds more pairs but risks outliers.</div>
 
       <div class="grid cols-2">
         <figure class="card">
@@ -275,7 +275,8 @@
     <!-- ---------- B4 ---------- -->
     <section id="b4">
       <h2>B.4 — 4-Point RANSAC &amp; Automatic Mosaics <span class="tag">Deliverable</span></h2>
-      <p class="lead">Homography via 4-point RANSAC (from scratch), mosaics via warping &amp; feathering. I compare Part A (manual) vs Part B (automatic) and show three different pairs.</p>
+      <p class="lead"><strong>What I did.</strong> I estimate robust homographies with 4-point RANSAC (DLT inside), then warp/blend to make mosaics. I compare manual (Part A) vs automatic (Part B) stitching over three pairs.</p>
+      <div class="note"><strong>What was tricky.</strong> Huge images caused RAM spikes during warping/blending. I fixed it with safe downscaling, float32 tensors, and fast feathered alphas.</div>
 
       <h3 class="small">Pair 1 — Manual vs Automatic</h3>
       <div class="grid cols-3">
@@ -298,7 +299,7 @@
         <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/pair3_manual_vs_auto.png" alt="Pair 3 side-by-side"></div><figcaption>Side-by-side. File: <span class="kbd">pair3_manual_vs_auto.png</span></figcaption></figure>
       </div>
 
-      <p class="small">Implementation notes: I use robust 4-point RANSAC (2000 iters default in the notebook), reprojection threshold 3–4 px, and a memory-friendly warper with fast feathering for large images.</p>
+      <p class="small">Implementation notes: 4-point RANSAC (2000 iters default), reprojection threshold ≈3–4 px, safe warping (downscale + float32), and fast feathering to avoid seams.</p>
     </section>
 
     <footer>
@@ -313,7 +314,7 @@
     <div class="lb-caption" id="lbCap"></div>
   </div>
 
-  <!-- Floating note (added) -->
+  <!-- Floating note -->
   <div class="scroll-note" id="scrollNote" role="note" aria-live="polite">
     <span class="dot" aria-hidden="true"></span>
     <span>Click any image to view full-size.</span>
@@ -338,7 +339,7 @@
     document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') overlay.classList.remove('active'); });
   </script>
 
-  <!-- Scroll note logic (added) -->
+  <!-- Scroll note logic -->
   <script>
     (function(){
       const NOTE_KEY = 'hideScrollNote';
