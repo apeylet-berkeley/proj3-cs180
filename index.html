@@ -50,6 +50,39 @@
     .tag{display:inline-block;background:color-mix(in oklab,var(--brand) 20%, transparent);color:color-mix(in oklab,var(--brand) 90%, white);padding:3px 8px;border-radius:999px;font-size:12px;border:1px solid color-mix(in oklab,var(--brand) 60%, transparent)}
     .imgwrap.tall { aspect-ratio: auto; }
     .imgwrap.tall img.media { object-fit: contain; height: auto; }
+
+    /* === Floating scroll note (added) === */
+    .scroll-note{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--text);
+      background: color-mix(in oklab, var(--paper) 92%, transparent);
+      border: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .scroll-note.hidden{ opacity: 0; transform: translateY(8px); pointer-events: none; }
+    .scroll-note .dot{
+      width: 8px; height: 8px; border-radius: 999px; background: var(--brand);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+    .scroll-note button{
+      all: unset; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1;
+      padding: 0 2px; border-radius: 6px;
+    }
+    .scroll-note button:hover{ color: var(--text); background: color-mix(in oklab, var(--text) 6%, transparent); }
+    @media (max-width: 540px){
+      .scroll-note{ left: 12px; right: 12px; bottom: 12px; justify-content:center; }
+    }
   </style>
 </head>
 <body>
@@ -210,7 +243,6 @@
       <p class="lead">Axis-aligned 8×8 descriptors sampled from a 40×40 window (blurred), with bias/gain normalization. Below are several sample descriptors (40×40 → blurred → 8×8).</p>
 
       <div class="grid cols-3">
-        <!-- Use the saved figures produced by viz/export helper; examples shown -->
         <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_0_desc_0000.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #0 (40×40 → 8×8). File: <span class="kbd">A_0_desc_0000.png</span></figcaption></figure>
         <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_1_desc_0031.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #1. File: <span class="kbd">A_1_desc_0001.png</span></figcaption></figure>
         <figure class="card"><div class="imgwrap"><img class="media lb" src="assets/A_2_desc_0062.png" alt="A descriptor sample"></div><figcaption>A — descriptor sample #2. File: <span class="kbd">A_2_desc_0002.png</span></figcaption></figure>
@@ -281,6 +313,13 @@
     <div class="lb-caption" id="lbCap"></div>
   </div>
 
+  <!-- Floating note (added) -->
+  <div class="scroll-note" id="scrollNote" role="note" aria-live="polite">
+    <span class="dot" aria-hidden="true"></span>
+    <span>Click any image to view full-size.</span>
+    <button id="scrollNoteClose" aria-label="Dismiss">×</button>
+  </div>
+
   <script>
     const overlay = document.getElementById('lb');
     const lbImg = document.getElementById('lbImg');
@@ -297,6 +336,33 @@
     lbClose.addEventListener('click', ()=> overlay.classList.remove('active'));
     overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.classList.remove('active'); });
     document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') overlay.classList.remove('active'); });
+  </script>
+
+  <!-- Scroll note logic (added) -->
+  <script>
+    (function(){
+      const NOTE_KEY = 'hideScrollNote';
+      const note = document.getElementById('scrollNote');
+      const btn  = document.getElementById('scrollNoteClose');
+
+      if(localStorage.getItem(NOTE_KEY) === '1'){
+        note.classList.add('hidden');
+      }
+
+      btn.addEventListener('click', ()=>{
+        note.classList.add('hidden');
+        localStorage.setItem(NOTE_KEY, '1');
+      });
+
+      // Subtle fade while scrolling
+      let t;
+      window.addEventListener('scroll', ()=>{
+        if(note.classList.contains('hidden')) return;
+        note.style.opacity = '.7';
+        clearTimeout(t);
+        t = setTimeout(()=>{ note.style.opacity = ''; }, 180);
+      }, {passive:true});
+    })();
   </script>
 </body>
 </html>
